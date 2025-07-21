@@ -2,11 +2,6 @@ import { Module } from '@nestjs/common';
 import { MovieModule } from './movie/movie.module';
 
 @Module({
-  imports: [MovieModule],  
+  imports: [MovieModule],
 })
 export class AppModule {}
-
-
-
-
-

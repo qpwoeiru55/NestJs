@@ -1,4 +1,9 @@
-export class CreateMovieDto{
-    title: string;
-    genre: string;
+import { IsNotEmpty } from 'class-validator';
+
+export class CreateMovieDto {
+  @IsNotEmpty()
+  title: string;
+
+  @IsNotEmpty()
+  genre: string;
 }
