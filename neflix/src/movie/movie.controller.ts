@@ -9,10 +9,12 @@ import {
   Query,
   UseInterceptors,
   ClassSerializerInterceptor,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { MovieService } from './movie.service';
 import { CreateMovieDto } from './dto/create-movie.dto';
 import { UpdateMovieDto } from './dto/update-movie.dto';
+import { MoveTitleValidationPipe } from './pipe/movie-title-validation.pipe';
 
 @Controller('movie')
 @UseInterceptors(ClassSerializerInterceptor)
@@ -20,12 +22,12 @@ export class MovieController {
   constructor(private readonly movieService: MovieService) {}
 
   @Get()
-  getMovies(@Query('title') title?: string) {
+  getMovies(@Query('title', MoveTitleValidationPipe) title?: string) {
     return this.movieService.getManyMovies(title);
   }
 
   @Get(':id')
-  getMovie(@Param('id') id: string) {
+  getMovie(@Param('id', ParseIntPipe) id: number) {
     return this.movieService.getMovieById(+id);
   }
 
@@ -35,12 +37,12 @@ export class MovieController {
   }
 
   @Patch(':id')
-  patchMovie(@Param('id') id: string, @Body() body: UpdateMovieDto) {
+  patchMovie(@Param('id', ParseIntPipe) id: string, @Body() body: UpdateMovieDto) {
     return this.movieService.updateMovie(+id, body);
   }
 
   @Delete(':id')
-  deleteMoive(@Param('id') id: string) {
+  deleteMoive(@Param('id', ParseIntPipe) id: string) {
     return this.movieService.deleteMovie(+id);
   }
 }
