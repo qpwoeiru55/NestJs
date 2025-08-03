@@ -2,12 +2,17 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from 'src/user/entities/user.entity';
 import { Repository } from 'typeorm';
+import * as bcrypt from 'bcrypt';
+import { ConfigService } from '@nestjs/config';
+import { JwtService } from '@nestjs/jwt';
 
 @Injectable()
 export class AuthService {
   constructor(
     @InjectRepository(User)
-    private readonly userRepository: Repository<User>
+    private readonly userRepository: Repository<User>,
+    private readonly configService: ConfigService,
+    private readonly jwtService: JwtService
   ) {}
 
   parseBasicToken(rawToken: string) {
@@ -37,7 +42,83 @@ export class AuthService {
     };
   }
 
-  register(rawToken: string) {
-    throw new Error('Method not implemented.');
+  async register(rawToken: string) {
+    const { email, password } = this.parseBasicToken(rawToken);
+
+    const user = await this.userRepository.findOne({
+      where: {
+        email,
+      },
+    });
+
+    if (user) {
+      throw new BadRequestException('이미 가입자입니다');
+    }
+
+    const saltRounds = this.configService.get<number>('HASH_ROUNDS');
+    if (saltRounds === undefined) {
+      throw new Error('HASH_ROUNDS 환경변수가 비어 있습니다.');
+    }
+
+    const hash = await bcrypt.hash(password, saltRounds);
+
+    await this.userRepository.save({
+      email,
+      password: hash,
+    });
+
+    return this.userRepository.findOne({
+      where: {
+        email,
+      },
+    });
+  }
+
+  async ahthenticate(email: string, password: string) {
+    const user = await this.userRepository.findOne({
+      where: {
+        email,
+      },
+    });
+
+    if (!user) {
+      throw new BadRequestException('잘못된 로그인 정보');
+    }
+
+    const passOk = await bcrypt.compare(password, user.password);
+
+    if (!passOk) {
+      throw new BadRequestException('잘못된 로그인 정보');
+    }
+
+    return user;
+  }
+
+  async issueToken(user: User, isRefreshToken: boolean) {
+    const accessTokenSecret = this.configService.get<string>('ACCESS_TOKEN_SECRET');
+    const refreshTokenSecret = this.configService.get<string>('REFRESH_TOKEN_SECRET');
+
+    return await this.jwtService.signAsync(
+      {
+        sub: user.id,
+        role: user.role,
+        type: isRefreshToken ? 'refresh' : 'access',
+      },
+      {
+        secret: isRefreshToken ? refreshTokenSecret : accessTokenSecret,
+        expiresIn: isRefreshToken ? '24h' : 300,
+      }
+    );
+  }
+
+  async login(rawToken: string) {
+    const { email, password } = this.parseBasicToken(rawToken);
+
+    const user = await this.ahthenticate(email, password);
+
+    return {
+      refreshToken: await this.issueToken(user, true),
+      accessToken: await this.issueToken(user, false),
+    };
   }
 }
