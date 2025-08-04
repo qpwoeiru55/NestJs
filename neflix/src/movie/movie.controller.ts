@@ -5,6 +5,7 @@ import {
   Body,
   Patch,
   Param,
+  Request,
   Delete,
   Query,
   UseInterceptors,
@@ -22,7 +23,8 @@ export class MovieController {
   constructor(private readonly movieService: MovieService) {}
 
   @Get()
-  getMovies(@Query('title', MoveTitleValidationPipe) title?: string) {
+  getMovies(@Request() req: any, @Query('title', MoveTitleValidationPipe) title?: string) {
+    console.log(req.user);
     return this.movieService.getManyMovies(title);
   }
 
