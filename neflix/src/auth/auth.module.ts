@@ -11,6 +11,6 @@ import { JwtStrategy } from './strategy/jwt.strategy';
   imports: [TypeOrmModule.forFeature([User]), JwtModule.register({})],
   controllers: [AuthController],
   providers: [AuthService, LocalStrategy, JwtStrategy],
-  exports: [AuthService, JwtModule],
+  exports: [AuthService, JwtModule], //bearerTokenMiddleware에서 쓰는것들
 })
 export class AuthModule {}

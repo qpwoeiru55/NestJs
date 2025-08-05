@@ -16,6 +16,9 @@ import { MovieService } from './movie.service';
 import { CreateMovieDto } from './dto/create-movie.dto';
 import { UpdateMovieDto } from './dto/update-movie.dto';
 import { MoveTitleValidationPipe } from './pipe/movie-title-validation.pipe';
+import { Public } from 'src/auth/decorator/public.decorator';
+import { RBAC } from 'src/auth/decorator/rbac.decorator';
+import { Role } from 'src/user/entities/user.entity';
 
 @Controller('movie')
 @UseInterceptors(ClassSerializerInterceptor)
@@ -23,27 +26,31 @@ export class MovieController {
   constructor(private readonly movieService: MovieService) {}
 
   @Get()
-  getMovies(@Request() req: any, @Query('title', MoveTitleValidationPipe) title?: string) {
-    console.log(req.user);
+  @Public()
+  getMovies(@Query('title', MoveTitleValidationPipe) title?: string) {
     return this.movieService.getManyMovies(title);
   }
 
   @Get(':id')
+  @Public()
   getMovie(@Param('id', ParseIntPipe) id: number) {
     return this.movieService.getMovieById(+id);
   }
 
   @Post()
+  @RBAC(Role.admin)
   postMovie(@Body() body: CreateMovieDto) {
     return this.movieService.createMovie(body);
   }
 
   @Patch(':id')
+  @RBAC(Role.admin)
   patchMovie(@Param('id', ParseIntPipe) id: string, @Body() body: UpdateMovieDto) {
     return this.movieService.updateMovie(+id, body);
   }
 
   @Delete(':id')
+  @RBAC(Role.admin)
   deleteMoive(@Param('id', ParseIntPipe) id: string) {
     return this.movieService.deleteMovie(+id);
   }
