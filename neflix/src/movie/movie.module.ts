@@ -6,9 +6,11 @@ import { Movie } from './entity/movie.entity';
 import { MovieDetail } from './entity/movie-detail.entity';
 import { Director } from 'src/director/entitity/director.entity';
 import { Genre } from 'src/genre/entitity/genre.entity';
+import { CommonModule } from 'src/common/common.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Movie, MovieDetail, Director, Genre])],
+  imports: [TypeOrmModule.forFeature([Movie, MovieDetail, Director, Genre]), CommonModule],
+
   controllers: [MovieController],
   providers: [MovieService],
 })

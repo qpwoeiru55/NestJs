@@ -7,6 +7,8 @@ import { DataSource, In, Repository } from 'typeorm';
 import { MovieDetail } from './entity/movie-detail.entity';
 import { Director } from 'src/director/entitity/director.entity';
 import { Genre } from 'src/genre/entitity/genre.entity';
+import { GetMovieDto } from './dto/get-movie.dto';
+import { CommonService } from 'src/common/common.service';
 
 @Injectable()
 export class MovieService {
@@ -19,10 +21,11 @@ export class MovieService {
     private readonly directorRepository: Repository<Director>,
     @InjectRepository(Genre)
     private readonly genreRepository: Repository<Genre>,
-    private readonly dataSource: DataSource
+    private readonly dataSource: DataSource,
+    private readonly commonService: CommonService
   ) {}
 
-  async getManyMovies(title?: string) {
+  async getManyMovies(dto: GetMovieDto) {
     // if (!title) {
     //   return [
     //     await this.movieRepository.find({
@@ -38,15 +41,25 @@ export class MovieService {
     //   },
     //   relations: ['detail', 'director', 'genres'],
     // });
+    const { title } = dto;
+    // const { page, take } = dto;
 
     const qb = await this.movieRepository
       .createQueryBuilder('movie')
       .leftJoinAndSelect('movie.director', 'director')
-      .leftJoinAndSelect('movie.genres', 'genres');
+      .leftJoinAndSelect('movie.genres', 'genres')
+      .leftJoinAndSelect('movie.detail', 'detail');
 
     if (title) {
       qb.where('movie.title LIKE :title', { title: `%${title}%` });
     }
+
+    // page와 take가 모두 존재할 때만 적용
+    // if (take && page) {
+    //   this.commonService.aapplyPagination(qb, { page, take });
+    // }
+
+    this.commonService.applyCursorPagination(qb, dto);
 
     return await qb.getManyAndCount();
   }
