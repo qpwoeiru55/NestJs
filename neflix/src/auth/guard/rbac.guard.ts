@@ -15,7 +15,7 @@ export class RBACGuard implements CanActivate {
       return true;
     }
 
-    const request = context.switchToHttp().getRequest();
+    const request = context.switchToHttp().getRequest(); // HTTP 요청 객체를 가져온다.
     const user = request.user;
 
     if (!user) {

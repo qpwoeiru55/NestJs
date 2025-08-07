@@ -59,9 +59,11 @@ export class MovieService {
     //   this.commonService.aapplyPagination(qb, { page, take });
     // }
 
-    this.commonService.applyCursorPagination(qb, dto);
+    const { nextCursor } = await this.commonService.applyCursorPagination(qb, dto);
 
-    return await qb.getManyAndCount();
+    const [data, count] = await qb.getManyAndCount();
+
+    return { data, nextCursor, count }; // 데이터와 다음 커서 반환
   }
 
   async getMovieById(id: number) {
