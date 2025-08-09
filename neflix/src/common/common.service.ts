@@ -51,8 +51,10 @@ export class CommonService {
       ///(co1,col2,...,coln3) > (val1,val2,...,val3)
       const columns = Object.keys(values); // 'id'
       const comparisonOperator = order.some((o) => o.endsWith('DESC')) ? '<' : '>';
-      const whereconditions = columns.map((column) => `${qb.alias}.${column}`).join(',');
-      const whereParams = columns.map((column) => `:${column}`).join(',');
+      // const whereconditions = columns.map((column) => `${qb.alias}.${column}`).join(',');
+      // const whereParams = columns.map((column) => `:${column}`).join(',');
+      const whereconditions = `(${columns.map((column) => `${qb.alias}."${column}"`).join(', ')})`;
+      const whereParams = `(${columns.map((column) => `:${column}`).join(', ')})`;
 
       qb.andWhere(`${whereconditions} ${comparisonOperator} (${whereParams})`, values);
     }

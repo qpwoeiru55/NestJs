@@ -19,6 +19,7 @@ import { Public } from 'src/auth/decorator/public.decorator';
 import { RBAC } from 'src/auth/decorator/rbac.decorator';
 import { Role } from 'src/user/entities/user.entity';
 import { GetMovieDto } from './dto/get-movie.dto';
+import { TransactionInterceptor } from 'src/common/interceptor/transcation.interceptor';
 
 @Controller('movie')
 @UseInterceptors(ClassSerializerInterceptor)
@@ -38,8 +39,9 @@ export class MovieController {
   }
 
   @Post()
+  @UseInterceptors(TransactionInterceptor)
   @RBAC(Role.admin)
-  postMovie(@Body() body: CreateMovieDto) {
+  postMovie(@Body() body: CreateMovieDto, @Request() req) {
     return this.movieService.createMovie(body);
   }
 
