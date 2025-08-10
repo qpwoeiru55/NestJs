@@ -3,7 +3,7 @@ import { UpdateMovieDto } from './dto/update-movie.dto';
 import { CreateMovieDto } from './dto/create-movie.dto';
 import { Movie } from './entity/movie.entity';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, In, Repository } from 'typeorm';
+import { DataSource, In, QueryRunner, Repository } from 'typeorm';
 import { MovieDetail } from './entity/movie-detail.entity';
 import { Director } from 'src/director/entitity/director.entity';
 import { Genre } from 'src/genre/entitity/genre.entity';
@@ -89,85 +89,72 @@ export class MovieService {
     return movie;
   }
 
-  async createMovie(createMovieDto: CreateMovieDto) {
-    const qr = this.dataSource.createQueryRunner();
-    await qr.connect();
-    await qr.startTransaction();
+  async createMovie(createMovieDto: CreateMovieDto, qr: QueryRunner) {
+    const director = await qr.manager.findOne(Director, {
+      where: {
+        id: createMovieDto.directorId,
+      },
+    });
 
-    try {
-      const director = await qr.manager.findOne(Director, {
-        where: {
-          id: createMovieDto.directorId,
-        },
-      });
-
-      if (!director) {
-        throw new NotFoundException('존재하지 않는 id 디렉터');
-      }
-
-      const genres = await qr.manager.find(Genre, {
-        where: {
-          id: In(createMovieDto.genreIds),
-        },
-      });
-
-      if (genres.length !== createMovieDto.genreIds.length) {
-        throw new NotFoundException(
-          `존재하지 않는 장르가 잇다 -> ${genres.map((genre) => genre.id).join(',')}`
-        );
-      }
-
-      const movieDetail = await qr.manager
-        .createQueryBuilder()
-        .insert()
-        .into(MovieDetail)
-        .values({
-          detail: createMovieDto.detail,
-        })
-        .execute();
-
-      const movieDetailId = movieDetail.identifiers[0].id;
-
-      const movie = await qr.manager
-        .createQueryBuilder()
-        .insert()
-        .into(Movie)
-        .values({
-          title: createMovieDto.title,
-          detail: { id: movieDetailId },
-          director,
-        })
-        .execute();
-
-      const movieId = movie.identifiers[0].id;
-
-      await qr.manager
-        .createQueryBuilder()
-        .relation(Movie, 'genres')
-        .of(movieId)
-        .add(genres.map((genre) => genre.id));
-
-      // const movie = await this.movieRepository.save({
-      //   title: createMovieDto.title,
-      //   detail: { detail: createMovieDto.detail },
-      //   director,
-      //   genres,
-      // });
-
-      await qr.commitTransaction();
-
-      return await this.movieRepository.findOne({
-        where: {
-          id: movieId,
-        },
-        relations: ['detail', 'director', 'genres'],
-      });
-    } catch (e) {
-      await qr.rollbackTransaction();
-      throw e;
-    } finally {
-      await qr.release();
+    if (!director) {
+      throw new NotFoundException('존재하지 않는 id 디렉터');
     }
+
+    const genres = await qr.manager.find(Genre, {
+      where: {
+        id: In(createMovieDto.genreIds),
+      },
+    });
+
+    if (genres.length !== createMovieDto.genreIds.length) {
+      throw new NotFoundException(
+        `존재하지 않는 장르가 잇다 -> ${genres.map((genre) => genre.id).join(',')}`
+      );
+    }
+
+    const movieDetail = await qr.manager
+      .createQueryBuilder()
+      .insert()
+      .into(MovieDetail)
+      .values({
+        detail: createMovieDto.detail,
+      })
+      .execute();
+
+    const movieDetailId = movieDetail.identifiers[0].id;
+
+    const movie = await qr.manager
+      .createQueryBuilder()
+      .insert()
+      .into(Movie)
+      .values({
+        title: createMovieDto.title,
+        detail: { id: movieDetailId },
+        director,
+      })
+      .execute();
+
+    const movieId = movie.identifiers[0].id;
+
+    await qr.manager
+      .createQueryBuilder()
+      .relation(Movie, 'genres')
+      .of(movieId)
+      .add(genres.map((genre) => genre.id));
+
+    // const movie = await this.movieRepository.save({
+    //   title: createMovieDto.title,
+    //   detail: { detail: createMovieDto.detail },
+    //   director,
+    //   genres,
+    // });
+
+    return await qr.manager.findOne(Movie, {
+      where: {
+        id: movieId,
+      },
+      relations: ['detail', 'director', 'genres'],
+    });
   }
 
   async updateMovie(id: number, updateMovieDto: UpdateMovieDto) {

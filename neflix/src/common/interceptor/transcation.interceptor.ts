@@ -14,7 +14,7 @@ export class TransactionInterceptor implements NestInterceptor {
     await qr.connect();
     await qr.startTransaction();
 
-    req.transactionQueryRunner = qr;
+    req.QueryRunner = qr; //이거를 서비스에서 사용하기 위해서 넣어주는 것
 
     return next.handle().pipe(
       catchError(async (e) => {

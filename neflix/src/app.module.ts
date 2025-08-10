@@ -14,10 +14,12 @@ import { UserModule } from './user/user.module';
 import { User } from './user/entities/user.entity';
 import { envVariableKeys } from './common/const/env.const';
 import { bearerTokenMiddleware } from './auth/middleware/bearer.middleware';
-import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { AuthGuard } from './auth/guard/auth.guard';
 import { RBACGuard } from './auth/guard/rbac.guard';
 import { ResponseTimeInterceptor } from './common/interceptor/response-time.interceptor';
+import { ForbiddenFilter } from './common/filter/forbidden.filter';
+import { QueryFailedErrorFilter } from './common/filter/query-failed.filter';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -76,6 +78,14 @@ import { ResponseTimeInterceptor } from './common/interceptor/response-time.inte
     {
       provide: APP_INTERCEPTOR,
       useClass: ResponseTimeInterceptor, // Register the ResponseTimeInterceptor globally
+    },
+    {
+      provide: APP_FILTER,
+      useClass: ForbiddenFilter, // Register the ForbiddenFilter globally
+    },
+    {
+      provide: APP_FILTER,
+      useClass: QueryFailedErrorFilter, // Register the QueryFailedErrorFilter globally
     },
   ],
 })
