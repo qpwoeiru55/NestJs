@@ -11,21 +11,18 @@ import {
   UseInterceptors,
   ClassSerializerInterceptor,
   ParseIntPipe,
-  UploadedFile,
-  UploadedFiles,
-  BadRequestException,
 } from '@nestjs/common';
 import { MovieService } from './movie.service';
 import { CreateMovieDto } from './dto/create-movie.dto';
 import { UpdateMovieDto } from './dto/update-movie.dto';
 import { Public } from 'src/auth/decorator/public.decorator';
 import { RBAC } from 'src/auth/decorator/rbac.decorator';
-import { Role } from 'src/user/entities/user.entity';
+import { Role, User } from 'src/user/entities/user.entity';
 import { GetMovieDto } from './dto/get-movie.dto';
 import { TransactionInterceptor } from 'src/common/interceptor/transcation.interceptor';
-import { FileFieldsInterceptor, FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
-import { Movie } from './entity/movie.entity';
-import { MovieFilePipe } from './pipe/movie-file.pipe';
+import { UserId } from 'src/user/decorator/user-id.decorator';
+import { QueryRunner } from 'src/common/decorator/query-decorator';
+import { QueryRunner as QR } from 'typeorm';
 
 @Controller('movie')
 @UseInterceptors(ClassSerializerInterceptor)
@@ -46,30 +43,13 @@ export class MovieController {
 
   @Post()
   @UseInterceptors(TransactionInterceptor)
-  @UseInterceptors(
-    FileInterceptor('movie', {
-      limits: {
-        fileSize: 1024 * 1024 * 100, // 100MB
-      },
-      fileFilter: (req, file, callback) => {
-        console.log(file);
-        if (file.mimetype !== 'video/mp4') {
-          return callback(new BadRequestException('mp4만 가능'), false);
-        }
-
-        return callback(null, true); // 모든 파일을 허용
-      },
-    })
-  )
   @RBAC(Role.admin)
   postMovie(
     @Body() body: CreateMovieDto,
-    @Request() req,
-    @UploadedFile()
-    movie: Express.Multer.File
+    @QueryRunner() queryRunner: QR,
+    @UserId() userId: number
   ) {
-    console.log(movie);
-    return this.movieService.createMovie(body, req.QueryRunner);
+    return this.movieService.createMovie(body, userId, queryRunner);
   }
 
   @Patch(':id')
@@ -82,5 +62,15 @@ export class MovieController {
   @RBAC(Role.admin)
   deleteMoive(@Param('id', ParseIntPipe) id: string) {
     return this.movieService.deleteMovie(+id);
+  }
+
+  @Post(':id/like')
+  createMovieLike(@Param('id', ParseIntPipe) movieId: number, @UserId() userId: number) {
+    return this.movieService.toggleMovieLike(movieId, userId, true);
+  }
+
+  @Post(':id/dislike')
+  createMovieDislike(@Param('id', ParseIntPipe) movieId: number, @UserId() userId: number) {
+    return this.movieService.toggleMovieLike(movieId, userId, false);
   }
 }

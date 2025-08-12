@@ -40,10 +40,10 @@ export class MovieFilePipe
       extension = split[split.length - 1];
     }
 
-    const filenmae = `${v4()}_${Date.now()}.${extension}`;
-    const newPath = join(value.destination, filenmae);
+    const filenmae = `${v4()}_${Date.now()}.${extension}`; // UUID와 현재 시간을 조합하여 파일 이름 생성
+    const newPath = join(value.destination, filenmae); // 새 파일 경로 생성
 
-    await rename(value.path, newPath);
+    await rename(value.path, newPath); // 파일 이름 변경
 
     return {
       ...value,
