@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  Inject,
   Injectable,
   NotFoundException,
   UnauthorizedException,
@@ -18,6 +19,7 @@ import { join } from 'path';
 import { rename } from 'fs/promises';
 import { User } from 'src/user/entities/user.entity';
 import { MovieUserLike } from './entity/movie-user-like.entity';
+import { CACHE_MANAGER, Cache } from '@nestjs/cache-manager';
 
 @Injectable()
 export class MovieService {
@@ -35,10 +37,30 @@ export class MovieService {
     @InjectRepository(MovieUserLike)
     private readonly movieUserLikeRepository: Repository<MovieUserLike>,
     private readonly dataSource: DataSource,
-    private readonly commonService: CommonService
+    private readonly commonService: CommonService,
+    @Inject(CACHE_MANAGER)
+    private readonly cacheManager: Cache
   ) {}
+  async findRecent() {
+    const cacheData = await this.cacheManager.get('MOVIE_RECENT');
 
-  async getManyMovies(dto: GetMovieDto) {
+    if (cacheData) {
+      return cacheData;
+    }
+
+    const data = await this.movieRepository.find({
+      order: {
+        createdAt: 'DESC',
+      },
+      take: 10,
+    });
+
+    await this.cacheManager.set('MOVIE_RECENT', data);
+
+    return data;
+  }
+
+  async getManyMovies(dto: GetMovieDto, userId?: number) {
     // if (!title) {
     //   return [
     //     await this.movieRepository.find({
@@ -74,7 +96,37 @@ export class MovieService {
 
     const { nextCursor } = await this.commonService.applyCursorPagination(qb, dto);
 
-    const [data, count] = await qb.getManyAndCount();
+    let [data, count] = await qb.getManyAndCount();
+
+    if (userId) {
+      const movieIds = data.map((movie) => movie.id);
+
+      const likedMovies =
+        movieIds.length < 1
+          ? []
+          : await this.movieUserLikeRepository
+              .createQueryBuilder('movieUserLike')
+              .leftJoinAndSelect('movieUserLike.user', 'user')
+              .leftJoinAndSelect('movieUserLike.movie', 'movie')
+              .where('movie.id IN (:...movieIds)', { movieIds })
+              .andWhere('user.id = :userId', { userId })
+              .getMany();
+
+      // likedMovies는 현재 사용자가 좋아요를 누른 영화의 목록입니다.
+      const likedMovieMap = likedMovies.reduce(
+        (acc, next) => ({
+          ...acc,
+          [next.movie.id]: next.isLike,
+        }),
+        {}
+      );
+
+      // data에 likeStatus를 추가합니다.
+      data = data.map((x) => ({
+        ...x,
+        likeStatus: x.id in likedMovieMap ? likedMovieMap[x.id] : null,
+      }));
+    }
 
     return { data, nextCursor, count }; // 데이터와 다음 커서 반환
   }
