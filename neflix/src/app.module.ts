@@ -23,6 +23,9 @@ import { QueryFailedErrorFilter } from './common/filter/query-failed.filter';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
 import { MovieUserLike } from './movie/entity/movie-user-like.entity';
+import { CacheModule } from '@nestjs/cache-manager';
+import { ThrottleInterceptor } from './common/interceptor/throttle.interceptor';
+import { ScheduleModule } from '@nestjs/schedule';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -67,6 +70,8 @@ import { MovieUserLike } from './movie/entity/movie-user-like.entity';
       rootPath: join(process.cwd(), 'public'),
       serveRoot: '/public/',
     }),
+    CacheModule.register({ ttl: 3000, isGlobal: true }),
+    ScheduleModule.forRoot(),
     MovieModule,
     DirectorModule,
     GenreModule,
@@ -86,13 +91,17 @@ import { MovieUserLike } from './movie/entity/movie-user-like.entity';
       provide: APP_INTERCEPTOR,
       useClass: ResponseTimeInterceptor, // Register the ResponseTimeInterceptor globally
     },
-    {
-      provide: APP_FILTER,
-      useClass: ForbiddenFilter, // Register the ForbiddenFilter globally
-    },
+    // {
+    //   provide: APP_FILTER,
+    //   useClass: ForbiddenFilter, // Register the ForbiddenFilter globally
+    // },
     {
       provide: APP_FILTER,
       useClass: QueryFailedErrorFilter, // Register the QueryFailedErrorFilter globally
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: ThrottleInterceptor, // Register the ThrottleInterceptor globally
     },
   ],
 })

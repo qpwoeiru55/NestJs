@@ -7,6 +7,7 @@ import {
   Request,
   UseGuards,
   Get,
+  Body,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { LocalAuthGuard } from './strategy/local.strategy';
@@ -38,6 +39,10 @@ export class AuthController {
   //     accessToken: await this.authService.issueToken(payload, false),
   //   };
   // }
+  @Post('token/block')
+  blockToken(@Body('token') token: string) {
+    return this.authService.blockToken(token);
+  }
 
   @Post('token/access')
   async rotateAccessToken(@Request() req) {

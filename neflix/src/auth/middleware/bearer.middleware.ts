@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  Inject,
   Injectable,
   NestMiddleware,
   UnauthorizedException,
@@ -8,12 +9,15 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Request, Response, NextFunction } from 'express';
 import { envVariableKeys } from 'src/common/const/env.const';
+import { CACHE_MANAGER, Cache } from '@nestjs/cache-manager';
 
 @Injectable()
 export class bearerTokenMiddleware implements NestMiddleware {
   constructor(
     private readonly jwtService: JwtService,
-    private readonly configService: ConfigService
+    private readonly configService: ConfigService,
+    @Inject(CACHE_MANAGER)
+    private readonly cacheManager: Cache
   ) {}
 
   async use(req: Request, res: Response, next: NextFunction) {
@@ -26,13 +30,30 @@ export class bearerTokenMiddleware implements NestMiddleware {
       return;
     }
 
-    try {
-      const token = this.validateBearerToken(authHeader);
-      const decodedPayload = this.jwtService.decode(token);
+    const token = this.validateBearerToken(authHeader);
 
-      if (decodedPayload.type !== 'refresh' && decodedPayload.type !== 'access') {
-        throw new UnauthorizedException('잘못된 토큰');
-      }
+    const blockedToken = await this.cacheManager.get(`BLOCK_TOKEN_${token}`);
+
+    if (blockedToken) {
+      throw new UnauthorizedException('차단된 토큰입니다');
+    }
+
+    const cachedPayload = await this.cacheManager.get(`TOKEN_${token}`);
+
+    if (cachedPayload) {
+      console.log('캐시에서 토큰 정보 조회:', cachedPayload);
+      req.user = cachedPayload;
+      next();
+      return;
+    }
+
+    const decodedPayload = this.jwtService.decode(token);
+
+    if (decodedPayload.type !== 'refresh' && decodedPayload.type !== 'access') {
+      throw new UnauthorizedException('잘못된 토큰');
+    }
+
+    try {
       const secretKey =
         decodedPayload.type === 'refresh'
           ? envVariableKeys.refreshTokenSecret
@@ -41,6 +62,18 @@ export class bearerTokenMiddleware implements NestMiddleware {
       const payload = await this.jwtService.verifyAsync(token, {
         secret: this.configService.get<string>(secretKey),
       });
+
+      const expiryDate = +new Date(payload['exp'] * 1000);
+
+      const now = +Date.now();
+
+      const differenceInSeconds = (expiryDate - now) / 1000;
+
+      await this.cacheManager.set(
+        `TOKEN_${token}`,
+        payload,
+        Math.max((differenceInSeconds - 30) * 1000, 1)
+      );
 
       req.user = payload;
 

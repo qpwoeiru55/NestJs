@@ -21,10 +21,11 @@ import { Role, User } from 'src/user/entities/user.entity';
 import { GetMovieDto } from './dto/get-movie.dto';
 import { TransactionInterceptor } from 'src/common/interceptor/transcation.interceptor';
 import { UserId } from 'src/user/decorator/user-id.decorator';
-import { QueryRunner } from 'src/common/decorator/query-decorator';
+import { QueryRunner } from 'src/common/decorator/query-runner.decorator';
 import { QueryRunner as QR } from 'typeorm';
-import { CacheKey, CacheInterceptor as CI } from '@nestjs/cache-manager';
+import { CacheKey, CacheTTL, CacheInterceptor as CI } from '@nestjs/cache-manager';
 import { CacheInterceptor } from 'src/common/interceptor/cache.interceptor';
+import { Throttle } from 'src/common/decorator/throttle.decorator';
 
 @Controller('movie')
 @UseInterceptors(ClassSerializerInterceptor)
@@ -33,6 +34,7 @@ export class MovieController {
 
   @Get()
   @Public()
+  @Throttle({ count: 5, unit: 'minute' })
   // @UseInterceptors(CacheInterceptor)
   getMovies(@Query() dto: GetMovieDto, @UserId() userId?: number) {
     return this.movieService.getManyMovies(dto, userId);
@@ -41,6 +43,7 @@ export class MovieController {
   @Get('recent')
   @UseInterceptors(CI)
   @CacheKey('getMoviesRecent')
+  @CacheTTL(1000)
   getMoviesRecent() {
     return this.movieService.findRecent();
   }
