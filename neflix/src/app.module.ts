@@ -21,11 +21,14 @@ import { ResponseTimeInterceptor } from './common/interceptor/response-time.inte
 import { ForbiddenFilter } from './common/filter/forbidden.filter';
 import { QueryFailedErrorFilter } from './common/filter/query-failed.filter';
 import { ServeStaticModule } from '@nestjs/serve-static';
-import { join } from 'path';
+import { format, join } from 'path';
 import { MovieUserLike } from './movie/entity/movie-user-like.entity';
 import { CacheModule } from '@nestjs/cache-manager';
 import { ThrottleInterceptor } from './common/interceptor/throttle.interceptor';
 import { ScheduleModule } from '@nestjs/schedule';
+import { WinstonModule } from 'nest-winston';
+import * as winston from 'winston';
+
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -72,6 +75,31 @@ import { ScheduleModule } from '@nestjs/schedule';
     }),
     CacheModule.register({ ttl: 3000, isGlobal: true }),
     ScheduleModule.forRoot(),
+    WinstonModule.forRoot({
+      level: 'debug',
+      transports: [
+        new winston.transports.Console({
+          format: winston.format.combine(
+            winston.format.colorize({ all: true }),
+            winston.format.timestamp(),
+            winston.format.printf(
+              (info) => `${info.timestamp} ${info.context} ${info.level}: ${info.message}`
+            )
+          ),
+        }),
+        new winston.transports.File({
+          dirname: join(process.cwd(), 'logs'),
+          filename: 'logs/error.log',
+          format: winston.format.combine(
+            winston.format.colorize({ all: true }),
+            winston.format.timestamp(),
+            winston.format.printf(
+              (info) => `${info.timestamp} ${info.context} ${info.level}: ${info.message}`
+            )
+          ),
+        }),
+      ],
+    }),
     MovieModule,
     DirectorModule,
     GenreModule,
