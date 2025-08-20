@@ -11,6 +11,8 @@ import {
   UseInterceptors,
   ClassSerializerInterceptor,
   ParseIntPipe,
+  Version,
+  VERSION_NEUTRAL,
 } from '@nestjs/common';
 import { MovieService } from './movie.service';
 import { CreateMovieDto } from './dto/create-movie.dto';
@@ -26,16 +28,34 @@ import { QueryRunner as QR } from 'typeorm';
 import { CacheKey, CacheTTL, CacheInterceptor as CI } from '@nestjs/cache-manager';
 import { CacheInterceptor } from 'src/common/interceptor/cache.interceptor';
 import { Throttle } from 'src/common/decorator/throttle.decorator';
+import { ApiBearerAuth } from '@nestjs/swagger';
 
+// @Controller({
+//   path: 'movie',
+//   version: '2',
+// })
+// export class MovieControllerV2 {
+//   @Get()
+//   getMovies() {
+//     return [];
+//   }
+// }
+
+// @Controller({
+//   path: 'movie',
+//   version: VERSION_NEUTRAL,
+// })
 @Controller('movie')
+@ApiBearerAuth()
 @UseInterceptors(ClassSerializerInterceptor)
 export class MovieController {
   constructor(private readonly movieService: MovieService) {}
 
   @Get()
   @Public()
-  @Throttle({ count: 5, unit: 'minute' })
   // @UseInterceptors(CacheInterceptor)
+  @Throttle({ count: 5, unit: 'minute' })
+  // @Version('5')
   getMovies(@Query() dto: GetMovieDto, @UserId() userId?: number) {
     return this.movieService.getManyMovies(dto, userId);
   }
