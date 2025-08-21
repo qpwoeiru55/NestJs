@@ -28,7 +28,7 @@ import { QueryRunner as QR } from 'typeorm';
 import { CacheKey, CacheTTL, CacheInterceptor as CI } from '@nestjs/cache-manager';
 import { CacheInterceptor } from 'src/common/interceptor/cache.interceptor';
 import { Throttle } from 'src/common/decorator/throttle.decorator';
-import { ApiBearerAuth } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 
 // @Controller({
 //   path: 'movie',
@@ -47,6 +47,7 @@ import { ApiBearerAuth } from '@nestjs/swagger';
 // })
 @Controller('movie')
 @ApiBearerAuth()
+@ApiTags('movie')
 @UseInterceptors(ClassSerializerInterceptor)
 export class MovieController {
   constructor(private readonly movieService: MovieService) {}
@@ -56,6 +57,9 @@ export class MovieController {
   // @UseInterceptors(CacheInterceptor)
   @Throttle({ count: 5, unit: 'minute' })
   // @Version('5')
+  @ApiOperation({ description: 'Get movies list 페이지네이션' })
+  @ApiResponse({ status: 200, description: 'Success!!!!' })
+  @ApiResponse({ status: 400, description: '페이지 네이션 데이터 잘못입력' })
   getMovies(@Query() dto: GetMovieDto, @UserId() userId?: number) {
     return this.movieService.getManyMovies(dto, userId);
   }
